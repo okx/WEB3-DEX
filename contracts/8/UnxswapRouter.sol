@@ -495,6 +495,7 @@ contract UnxswapRouter is CommonUtils {
             mstore(emptyPtr, srcToken)
             mstore(add(emptyPtr, 0x20), toToken)
             mstore(add(emptyPtr, 0x40), origin())
+            mstore(add(emptyPtr, 0x40), receiver)
             mstore(add(emptyPtr, 0x60), amount)
             mstore(add(emptyPtr, 0x80), returnAmount)
             log1(
