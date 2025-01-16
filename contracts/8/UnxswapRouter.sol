@@ -492,15 +492,15 @@ contract UnxswapRouter is CommonUtils {
                 ) // "Min return not reached"
             }
             // emit event
-            mstore(emptyPtr, srcToken)
-            mstore(add(emptyPtr, 0x20), toToken)
-            mstore(add(emptyPtr, 0x40), origin())
-            mstore(add(emptyPtr, 0x40), receiver)
-            mstore(add(emptyPtr, 0x60), amount)
-            mstore(add(emptyPtr, 0x80), returnAmount)
+            mstore(emptyPtr,              srcToken)       // [0x00 -> 0x1F]  fromToken
+            mstore(add(emptyPtr, 0x20),   toToken)        // [0x20 -> 0x3F]  toToken
+            mstore(add(emptyPtr, 0x40),   origin())       // [0x40 -> 0x5F]  sender
+            mstore(add(emptyPtr, 0x60),   receiver)       // [0x60 -> 0x7F]  receiver
+            mstore(add(emptyPtr, 0x80),   amount)         // [0x80 -> 0x9F]  fromAmount
+            mstore(add(emptyPtr, 0xA0),   returnAmount)   // [0xA0 -> 0xBF]  returnAmount
             log1(
                 emptyPtr,
-                0xa0,
+                0xc0, // 6 × 32 bytes = 0xC0
                 0xfe793b6df82276a4e48bce23dda9cca20cac1aec78da1e85ebcdacf7b5db347a 
                 // keccak256("OrderRecord(address,address,address,address,uint256,uint256)")
             )
