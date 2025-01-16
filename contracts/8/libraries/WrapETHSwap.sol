@@ -32,6 +32,6 @@ abstract contract WrapETHSwap is CommonUtils {
       SafeERC20.safeTransfer(IERC20(_WETH), msg.sender, amount);
     }
     emit SwapOrderId(orderId);
-    emit OrderRecord(reversed ? _WETH : _ETH, reversed ? _ETH: _WETH, msg.sender, amount, amount);
+    emit OrderRecord(reversed ? _WETH : _ETH, reversed ? _ETH: _WETH, msg.sender, msg.sender, amount, amount);
   }
 }
