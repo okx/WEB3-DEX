@@ -394,7 +394,7 @@ contract DexRouter is
             "Min return not reached"
         );
 
-        // emit event
+        // 7. emit event
         emit OrderRecord(
             fromToken,
             _baseRequest.toToken,
