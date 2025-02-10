@@ -10,7 +10,7 @@ require('dotenv').config();
 
 
 // Note: If no private key is configured in the project, the first test account of Hardhat is used by default
-const PRIVATE_KEY = process.env.PRIVATE_KEY || 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const PRIVATE_KEY = process.env.PRIVATE_KEY || '0x21fa1bf8dc9793971382c89776e623f9177e4e30b24537d1b2f9383dc46a00c6';
 const ALCHEMY_KEY = process.env.ALCHEMY_KEY || '';
 const INFSTONES_KEY = process.env.INFSTONES_KEY || '';
 const INFURA_KEY = process.env.INFURA_KEY || '';
