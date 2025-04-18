@@ -60,7 +60,7 @@ There are several ways you can contribute to the SOR SmartContract project:
 ## Ways to Contribute
 
 ### Join Community Discussions
-Join our [Discord community](https://discord.gg/3N9PHeNn) to help other developers troubleshoot their integration issues and share your experience with the SOR SmartContract. Our Discord is the main hub for technical discussions, questions, and real-time support.
+Join our [Discord community](https://discord.gg/okxdexapi) to help other developers troubleshoot their integration issues and share your experience with the SOR SmartContract. Our Discord is the main hub for technical discussions, questions, and real-time support.
 
 ### Open an Issue
 - Open [issues](https://github.com/okx/WEB3-DEX-OPENSOURCE/issues) to suggest features or report minor bugs
