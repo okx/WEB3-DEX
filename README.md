@@ -1,6 +1,5 @@
 # OKX Labs Dex Router
 
-[![Tests](https://github.com/okx/WEB3-DEX/actions/workflows/tests.yml/badge.svg)](https://github.com/okx/WEB3-DEX/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 This repository contains the core smart contracts for the OKX Labs Dex Router. The router enables efficient token swaps across multiple liquidity sources and protocols through a unified interface.
