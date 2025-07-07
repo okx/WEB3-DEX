@@ -122,7 +122,6 @@ The router system consists of multiple contracts that need to be deployed in seq
 1. **Library contracts**: Deploy utility and commission libraries
 2. **Adapter contracts**: Deploy protocol-specific adapters
 3. **Main router**: Deploy the DexRouter with all dependencies
-4. **Configuration**: Set up adapter addresses and system parameters
 
 ### Prerequisites
 - **Solidity**: Version 0.8.17

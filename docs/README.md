@@ -67,7 +67,7 @@ npx solidity-docgen --solc-module solc-0.8 -t ./templates
 docs/
 ├── README.md                   # This overview
 ├── overview.md                 # Product overview and architecture
-├── guides.md                   # Implementation guides (4 core examples)
+├── guides.md                   # Implementation guides (3 core examples)
 ├── technical-reference.md      # Auto-generated API documentation
 ├── CONTRIBUTING.md            # Documentation contribution guidelines
 └── contract.hbs               # Handlebars template for auto-generation

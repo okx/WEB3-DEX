@@ -264,119 +264,198 @@ swapper.performTokenSwap(
 ## Guide 2: ETH/WETH Swap with Native Token Handling
 
 ### Introduction
-This guide demonstrates how to handle native ETH swaps using the router's built-in ETH/WETH conversion capabilities. The router automatically manages wrapping and unwrapping as needed.
+This guide demonstrates how to handle native ETH swaps using the router's built-in ETH/WETH conversion capabilities. You'll learn to use the specialized `swapWrap` function for efficient wrapping and unwrapping operations with commission handling.
 
 ### What You'll Build
-A contract that can swap ETH for tokens and tokens for ETH seamlessly.
+A contract that can wrap ETH to WETH and unwrap WETH to ETH seamlessly using the router's optimized swap functionality.
 
 ### Implementation
 
-**Step 1: ETH Swap Contract**
+**Step 1: ETH Swap Contract Setup**
 ```solidity
-contract ETHSwapExample {
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "../contracts/8/DexRouter.sol";
+// import "../contracts/8/libraries/PMMLib.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+contract SmartSwap {
     using SafeERC20 for IERC20;
     
-    DexRouter public immutable dexRouter;
-    address public constant ETH_ADDRESS = address(0);
-    
-    constructor(address _dexRouter) {
-        dexRouter = DexRouter(_dexRouter);
-    }
-    
-    // Swap ETH for tokens
-    function swapETHForTokens(
-        address toToken,
-        uint256 minReturn,
-        uint256 deadline
-    ) external payable returns (uint256 returnAmount) {
-        require(msg.value > 0, "Must send ETH");
-        
-        DexRouter.BaseRequest memory request = DexRouter.BaseRequest({
-            fromToken: uint256(uint160(ETH_ADDRESS)),
-            toToken: toToken,
-            fromTokenAmount: msg.value,
-            minReturnAmount: minReturn,
-            deadLine: deadline
-        });
-        
-        uint256[] memory batchAmounts = new uint256[](1);
-        batchAmounts[0] = msg.value;
-        
-        returnAmount = dexRouter.smartSwapByOrderId{value: msg.value}(
-            2, // orderId
-            request,
-            batchAmounts,
-            new DexRouter.RouterPath[][](0),
-            new PMMLib.PMMSwapRequest[](0)
+    address internal constant _ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address internal constant _WETH =
+        0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    uint256 internal constant _ADDRESS_MASK =
+        0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+    uint256 constant FROM_TOKEN_COMMISSION =
+        0x3ca20afc2aaa0000000000000000000000000000000000000000000000000000;
+    uint256 constant TO_TOKEN_COMMISSION =
+        0x3ca20afc2bbb0000000000000000000000000000000000000000000000000000;
+    uint256 constant FROM_TOKEN_COMMISSION_DUAL =
+        0x22220afc2aaa0000000000000000000000000000000000000000000000000000;
+    uint256 constant TO_TOKEN_COMMISSION_DUAL =
+        0x22220afc2bbb0000000000000000000000000000000000000000000000000000;
+    uint256 constant _TO_B_COMMISSION_MASK =
+        0x8000000000000000000000000000000000000000000000000000000000000000;
+
+    address public refer1;
+    address public refer2;
+    uint256 public rate1;
+    uint256 public rate2;
+
+    DexRouter public dexRouter;
+    address public tokenApprove;
+
+    constructor(
+        address _dexRouter,
+        address _tokenApprove,
+        address _refer1,
+        address _refer2,
+        uint256 _rate1,
+        uint256 _rate2
+    ) {
+        dexRouter = DexRouter(payable(_dexRouter));
+        tokenApprove = _tokenApprove;
+        refer1 = _refer1;
+        refer2 = _refer2;
+        require(_rate1 < 10 ** 9, "rate1 must be less than 10**9");
+        require(_rate2 < 10 ** 9, "rate2 must be less than 10**9");
+        require(
+            _rate1 + _rate2 < 0.03 * 10 ** 9,
+            "rate1 + rate2 must be less than 0.03"
         );
-        
-        // Tokens are automatically sent to msg.sender
+        rate1 = _rate1;
+        rate2 = _rate2;
     }
-    
-    // Swap tokens for ETH
-    function swapTokensForETH(
-        address fromToken,
-        uint256 amount,
-        uint256 minReturn,
-        uint256 deadline
-    ) external returns (uint256 returnAmount) {
-        IERC20(fromToken).safeTransferFrom(msg.sender, address(this), amount);
-        IERC20(fromToken).safeApprove(address(dexRouter), amount);
-        
-        DexRouter.BaseRequest memory request = DexRouter.BaseRequest({
-            fromToken: uint256(uint160(fromToken)),
-            toToken: ETH_ADDRESS,
-            fromTokenAmount: amount,
-            minReturnAmount: minReturn,
-            deadLine: deadline
-        });
-        
-        uint256[] memory batchAmounts = new uint256[](1);
-        batchAmounts[0] = amount;
-        
-        returnAmount = dexRouter.smartSwapByOrderId(
-            3, // orderId
-            request,
-            batchAmounts,
-            new DexRouter.RouterPath[][](0),
-            new PMMLib.PMMSwapRequest[](0)
-        );
-        
-        // ETH is automatically sent to msg.sender
-    }
-    
-    // Enable receiving ETH
-    receive() external payable {}
 }
 ```
 
-**Step 2: Usage Examples**
+**Step 2: Implement Swap Wrap Function**
 ```solidity
-// Deploy the contract
-ETHSwapExample ethSwapper = new ETHSwapExample(dexRouterAddress);
+function performTokenSwap(
+    bool unwrap,
+    uint256 amount,
+    uint256 orderId
+) external payable {
+    if (unwrap) {
+        // step1 : approve WETH
+        IERC20(_WETH).safeApprove(tokenApprove, amount);
+    }
+    
+    // step2 : encode rawData
+    uint256 rawData = uint256(
+        bytes32(
+            abi.encodePacked(
+                uint8(unwrap ? 0x80 : 0x00),
+                uint120(0),
+                uint128(amount)
+            )
+        )
+    );
+    
+    // Step 7: Execute the swap
+    bytes memory swapData = abi.encodeWithSelector(
+        dexRouter.swapWrap.selector,
+        orderId,
+        rawData
+    );
+    
+    // Step 8: Execute the swap with commission
+    bytes memory data = bytes.concat(
+        swapData,
+        _getCommissionInfo(true, true, true, unwrap ? _WETH : _ETH)
+    );
+    (bool s, bytes memory res) = address(dexRouter).call(data);
+    require(s, string(res));
+    // returnAmount contains the actual tokens received
+}
+```
 
-// Swap ETH for USDC
-uint256 usdcReceived = ethSwapper.swapETHForTokens{value: 1 ether}(
-    usdcAddress,
-    2900 * 1e6, // Minimum 2900 USDC
-    block.timestamp + 300
+**Step 3: Commission Handling for ETH/WETH**
+```solidity
+function _getCommissionInfo(
+    bool _hasNextRefer,
+    bool _isToB,
+    bool _isFrom,
+    address _token
+) internal view returns (bytes memory data) {
+    uint256 flag = _isFrom
+        ? (
+            _hasNextRefer
+                ? FROM_TOKEN_COMMISSION_DUAL
+                : FROM_TOKEN_COMMISSION
+        )
+        : (_hasNextRefer ? TO_TOKEN_COMMISSION_DUAL : TO_TOKEN_COMMISSION);
+
+    bytes32 first = bytes32(
+        flag + uint256(rate1 << 160) + uint256(uint160(refer1))
+    );
+    bytes32 middle = bytes32(
+        abi.encodePacked(uint8(_isToB ? 0x80 : 0), uint88(0), _token)
+    );
+    bytes32 last = bytes32(
+        flag + uint256(rate2 << 160) + uint256(uint160(refer2))
+    );
+    
+    uint256 status;
+    assembly {
+        function _getStatus(token, isToB, hasNextRefer) -> d {
+            let a := mul(eq(token, _ETH), 256)
+            let b := mul(isToB, 16)
+            let c := hasNextRefer
+            d := add(a, add(b, c))
+        }
+        status := _getStatus(_token, _isToB, _hasNextRefer)
+    }
+    
+    return _hasNextRefer
+        ? abi.encode(last, middle, first)
+        : abi.encode(middle, first);
+}
+```
+
+**Step 4: Usage Examples**
+```solidity
+// Deploy the contract with commission configuration
+SmartSwap ethSwapper = new SmartSwap(
+    dexRouterAddress,
+    approveProxyAddress,
+    0x000000000000000000000000000000000000dEaD, // refer1
+    0x000000000000000000000000000000000000bEEF, // refer2
+    0.0001 * 10 ** 9, // rate1 (0.01%)
+    0.00002 * 10 ** 9 // rate2 (0.002%)
 );
 
-// Swap USDC for ETH
-uint256 ethReceived = ethSwapper.swapTokensForETH(
-    usdcAddress,
-    3000 * 1e6, // 3000 USDC
-    0.95 ether, // Minimum 0.95 ETH
-    block.timestamp + 300
+// Wrap ETH to WETH
+ethSwapper.performTokenSwap{value: 1 ether}(
+    false,    // unwrap = false (wrap ETH to WETH)
+    1 ether,  // amount
+    1         // orderId
+);
+
+// Unwrap WETH to ETH
+ethSwapper.performTokenSwap(
+    true,     // unwrap = true (unwrap WETH to ETH)
+    1 ether,  // amount
+    2         // orderId
 );
 ```
 
 ### Expected Output
-- ETH → USDC: 1 ETH → ~3000 USDC
-- USDC → ETH: 3000 USDC → ~0.98 ETH
-- Gas: ~200,000 gas units per swap
+- **Wrap**: 1 ETH → 1 WETH (minus commission)
+- **Unwrap**: 1 WETH → 1 ETH (minus commission)
+- **Gas**: ~150,000 gas units per operation
+- **Commission**: Automatic fee distribution to referrers
 
-**📁 Complete Example**: View the [complete ETH Swap example](https://github.com/WEB3-DEX/WEB3-DEX/tree/main/examples/eth-swap) in our repository.
+**Key Features Demonstrated:**
+- Specialized `swapWrap` function for ETH/WETH operations
+- Efficient raw data encoding for wrap/unwrap operations
+- Commission handling for both ETH and WETH
+- Simplified interface for wrap/unwrap functionality
+
+**📁 Complete Example**: View the [complete ETH Swap example](https://github.com/WEB3-DEX/WEB3-DEX/tree/main/examples/swapWrap.sol) in our repository.
 
 ---
 

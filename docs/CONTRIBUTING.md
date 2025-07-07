@@ -145,9 +145,9 @@ npx typedoc --out docs src/index.ts
 docs/
 ├── overview.md                 # Product overview
 ├── guides/                     # Implementation guides
-│   ├── simple-swap.md         # Basic functionality
-│   ├── multi-path-routing.md  # Advanced features
-│   └── integration.md         # Integration patterns
+│   ├── simple-swap.md         # Basic functionality with commission system
+│   ├── eth-swap.md           # ETH/WETH handling
+│   └── investment.md         # Investment integration
 ├── reference/                  # Technical documentation
 │   ├── interfaces.md          # Contract interfaces
 │   ├── events.md             # Events and errors
