@@ -500,7 +500,7 @@ The router includes built-in commission handling:
 ### Basic Integration
 ```solidity
 // Initialize router
-IDexRouter router = IDexRouter(routerAddress);
+DexRouter router = DexRouter(routerAddress);
 
 // Prepare swap request
 BaseRequest memory request = BaseRequest({

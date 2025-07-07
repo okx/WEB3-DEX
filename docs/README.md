@@ -12,11 +12,10 @@ Comprehensive documentation for the WEB3-DEX Router aggregation and routing syst
 
 ### Implementation Guides  
 - **[Guides](guides.md)** - Step-by-step implementation examples
-- **Four core guides**, each completable in ~10 minutes:
-  1. **Simple Token Swap** - Basic ERC20 ↔ ERC20 exchanges
-  2. **Multi-Path Routing** - Advanced batch execution across DEXs
-  3. **ETH/WETH Handling** - Native token swap implementations
-  4. **Investment Integration** - Portfolio management and rebalancing
+- **Three core guides**, each completable in ~10 minutes:
+  1. **Simple Token Swap** - Basic ERC20 ↔ ERC20 exchanges with commission system
+  2. **ETH/WETH Handling** - Native token swap implementations
+  3. **Investment Integration** - Portfolio management and rebalancing
 
 ### Technical Reference
 - **[Technical Reference](technical-reference.md)** - Complete API specifications

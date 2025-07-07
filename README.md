@@ -153,7 +153,6 @@ contracts/
     │   └── ...                     # Many other protocol adapters
     ├── interfaces/                 # Contract interfaces
     ├── libraries/                  # Utility libraries
-    ├── storage/                    # Storage contracts
     └── utils/                      # Utility contracts
 ```
 

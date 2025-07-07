@@ -260,143 +260,7 @@ swapper.performTokenSwap(
 
 ---
 
-## Guide 2: Multi-Path Swap with Batch Execution
-
-### Introduction
-This guide shows how to split a large order across multiple DEXs to minimize price impact and get better rates. The router will automatically distribute your order across the best available liquidity sources.
-
-### What You'll Build
-A batch swap function that splits a large order across multiple protocols for optimal pricing.
-
-### Implementation
-
-**Step 1: Multi-Path Swap Contract**
-```solidity
-contract MultiPathSwapExample {
-    using SafeERC20 for IERC20;
-    
-    IDexRouter public immutable dexRouter;
-    
-    constructor(address _dexRouter) {
-        dexRouter = IDexRouter(_dexRouter);
-    }
-    
-    function executeMultiPathSwap(
-        address fromToken,
-        address toToken,
-        uint256 totalAmount,
-        uint256 minReturn,
-        uint256 deadline,
-        uint256[] calldata batchWeights,
-        address[] calldata adapters,
-        bytes[] calldata routingData
-    ) external returns (uint256 returnAmount) {
-        // Transfer tokens from user
-        IERC20(fromToken).safeTransferFrom(msg.sender, address(this), totalAmount);
-        IERC20(fromToken).safeApprove(address(dexRouter), totalAmount);
-        
-        // Prepare base request
-        IDexRouter.BaseRequest memory request = IDexRouter.BaseRequest({
-            fromToken: uint256(uint160(fromToken)),
-            toToken: toToken,
-            fromTokenAmount: totalAmount,
-            minReturnAmount: minReturn,
-            deadLine: deadline
-        });
-        
-        // Calculate batch amounts based on weights
-        uint256[] memory batchAmounts = new uint256[](batchWeights.length);
-        for (uint256 i = 0; i < batchWeights.length; i++) {
-            batchAmounts[i] = (totalAmount * batchWeights[i]) / 10000; // weights in basis points
-        }
-        
-        // Prepare routing paths
-        IDexRouter.RouterPath[][] memory batches = new IDexRouter.RouterPath[][](batchWeights.length);
-        for (uint256 i = 0; i < batchWeights.length; i++) {
-            batches[i] = new IDexRouter.RouterPath[](1);
-            batches[i][0] = IDexRouter.RouterPath({
-                mixAdapters: _toArray(adapters[i]),
-                assetTo: _toArray(address(this)),
-                rawData: new uint256[](1),
-                extraData: _toArray(routingData[i]),
-                fromToken: uint256(uint160(fromToken))
-            });
-        }
-        
-        // Execute multi-path swap
-        returnAmount = dexRouter.smartSwapByOrderId(
-            1, // orderId
-            request,
-            batchAmounts,
-            batches,
-            new bytes[](0)
-        );
-        
-        // Transfer result to user
-        IERC20(toToken).safeTransfer(msg.sender, returnAmount);
-    }
-    
-    function _toArray(address item) private pure returns (address[] memory) {
-        address[] memory array = new address[](1);
-        array[0] = item;
-        return array;
-    }
-    
-    function _toArray(bytes calldata item) private pure returns (bytes[] memory) {
-        bytes[] memory array = new bytes[](1);
-        array[0] = item;
-        return array;
-    }
-}
-```
-
-**Step 2: Usage Example**
-```solidity
-// Deploy the contract
-MultiPathSwapExample multiSwapper = new MultiPathSwapExample(dexRouterAddress);
-
-// Prepare batch parameters
-uint256[] memory weights = new uint256[](3);
-weights[0] = 4000; // 40% to Uniswap V3
-weights[1] = 3500; // 35% to Curve
-weights[2] = 2500; // 25% to Balancer
-
-address[] memory adapters = new address[](3);
-adapters[0] = uniV3AdapterAddress;
-adapters[1] = curveAdapterAddress;
-adapters[2] = balancerAdapterAddress;
-
-bytes[] memory routingData = new bytes[](3);
-routingData[0] = abi.encode(uniV3PoolAddress, 3000); // 0.3% fee tier
-routingData[1] = abi.encode(curvePoolAddress, 0);
-routingData[2] = abi.encode(balancerPoolAddress, balancerPoolId);
-
-// Execute multi-path swap
-uint256 ethAmount = 10 ether;
-uint256 minUsdcReturn = 29000 * 1e6; // Minimum 29,000 USDC
-
-uint256 usdcReceived = multiSwapper.executeMultiPathSwap(
-    address(0), // ETH
-    usdcAddress,
-    ethAmount,
-    minUsdcReturn,
-    block.timestamp + 300,
-    weights,
-    adapters,
-    routingData
-);
-```
-
-### Expected Output
-- Input: 10 ETH
-- Output: ~30,000 USDC distributed across 3 DEXs
-- Gas: ~400,000 gas units
-
-**📁 Complete Example**: View the [complete MultiPath example](https://github.com/WEB3-DEX/WEB3-DEX/tree/main/examples/multi-path-swap) in our repository.
-
----
-
-## Guide 3: ETH/WETH Swap with Native Token Handling
+## Guide 2: ETH/WETH Swap with Native Token Handling
 
 ### Introduction
 This guide demonstrates how to handle native ETH swaps using the router's built-in ETH/WETH conversion capabilities. The router automatically manages wrapping and unwrapping as needed.
@@ -411,11 +275,11 @@ A contract that can swap ETH for tokens and tokens for ETH seamlessly.
 contract ETHSwapExample {
     using SafeERC20 for IERC20;
     
-    IDexRouter public immutable dexRouter;
+    DexRouter public immutable dexRouter;
     address public constant ETH_ADDRESS = address(0);
     
     constructor(address _dexRouter) {
-        dexRouter = IDexRouter(_dexRouter);
+        dexRouter = DexRouter(_dexRouter);
     }
     
     // Swap ETH for tokens
@@ -426,7 +290,7 @@ contract ETHSwapExample {
     ) external payable returns (uint256 returnAmount) {
         require(msg.value > 0, "Must send ETH");
         
-        IDexRouter.BaseRequest memory request = IDexRouter.BaseRequest({
+        DexRouter.BaseRequest memory request = DexRouter.BaseRequest({
             fromToken: uint256(uint160(ETH_ADDRESS)),
             toToken: toToken,
             fromTokenAmount: msg.value,
@@ -441,8 +305,8 @@ contract ETHSwapExample {
             2, // orderId
             request,
             batchAmounts,
-            new IDexRouter.RouterPath[][](0),
-            new bytes[](0)
+            new DexRouter.RouterPath[][](0),
+            new PMMLib.PMMSwapRequest[](0)
         );
         
         // Tokens are automatically sent to msg.sender
@@ -458,7 +322,7 @@ contract ETHSwapExample {
         IERC20(fromToken).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(fromToken).safeApprove(address(dexRouter), amount);
         
-        IDexRouter.BaseRequest memory request = IDexRouter.BaseRequest({
+        DexRouter.BaseRequest memory request = DexRouter.BaseRequest({
             fromToken: uint256(uint160(fromToken)),
             toToken: ETH_ADDRESS,
             fromTokenAmount: amount,
@@ -473,8 +337,8 @@ contract ETHSwapExample {
             3, // orderId
             request,
             batchAmounts,
-            new IDexRouter.RouterPath[][](0),
-            new bytes[](0)
+            new DexRouter.RouterPath[][](0),
+            new PMMLib.PMMSwapRequest[](0)
         );
         
         // ETH is automatically sent to msg.sender
@@ -515,7 +379,7 @@ uint256 ethReceived = ethSwapper.swapTokensForETH(
 
 ---
 
-## Guide 4: Investment Contract Integration
+## Guide 3: Investment Contract Integration
 
 ### Introduction
 This guide shows how to use the specialized `smartSwapByInvest` function for investment scenarios. This function is optimized for cases where tokens are already held by the router contract, allowing for efficient rebalancing and investment operations.
@@ -786,9 +650,8 @@ try dexRouter.smartSwapByOrderId(...) returns (uint256 amount) {
 
 ### Recommended Learning Path
 1. **Start with Guide 1**: Master simple swaps with commission handling
-2. **Practice Guide 2**: Learn batch execution for better price discovery
-3. **Implement Guide 3**: Add ETH support to your integration
-4. **Advanced Guide 4**: Build investment-grade applications
+2. **Practice Guide 2**: Add ETH support to your integration
+3. **Advanced Guide 3**: Build investment-grade applications
 
 ### Advanced Topics
 1. **Custom Routing Strategies**: Build your own routing algorithms
