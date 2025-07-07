@@ -1,7 +1,7 @@
 import "../contracts/8/DexRouter.sol";
-import "../contracts/8/libraries/PMMLib.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+// import "../contracts/8/libraries/PMMLib.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract SmartSwap {
     using SafeERC20 for IERC20;
@@ -18,7 +18,7 @@ contract SmartSwap {
     }
 
     constructor(address _dexRouter, address _tokenApprove) {
-        dexRouter = DexRouter(_dexRouter);
+        dexRouter = DexRouter(payable(_dexRouter));
         tokenApprove = _tokenApprove;
     }
 
@@ -83,11 +83,11 @@ contract SmartSwap {
 
         // Step 7: Execute the swap
         uint256 returnAmount = dexRouter.smartSwapByInvest(
-            swapInfo.orderId,
             swapInfo.baseRequest,
             swapInfo.batchesAmount,
             swapInfo.batches,
-            swapInfo.extraData
+            swapInfo.extraData,
+            msg.sender
         );
 
         // returnAmount contains the actual tokens received

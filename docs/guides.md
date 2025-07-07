@@ -40,9 +40,9 @@ A comprehensive smart swap contract that exchanges tokens with configurable comm
 pragma solidity ^0.8.17;
 
 import "../contracts/8/DexRouter.sol";
-import "../contracts/8/libraries/PMMLib.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+// import "../contracts/8/libraries/PMMLib.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract SmartSwap {
     using SafeERC20 for IERC20;
@@ -85,7 +85,7 @@ contract SmartSwap {
         uint256 _rate1,
         uint256 _rate2
     ) {
-        dexRouter = DexRouter(_dexRouter);
+        dexRouter = DexRouter(payable(_dexRouter));
         tokenApprove = _tokenApprove;
         refer1 = _refer1;
         refer2 = _refer2;
@@ -175,6 +175,7 @@ function performTokenSwap(
     );
     (bool s, bytes memory res) = address(dexRouter).call(data);
     require(s, string(res));
+    // returnAmount contains the actual tokens received
 }
 ```
 
@@ -395,9 +396,9 @@ An investment smart contract that demonstrates direct token transfers to the Dex
 pragma solidity ^0.8.17;
 
 import "../contracts/8/DexRouter.sol";
-import "../contracts/8/libraries/PMMLib.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+// import "../contracts/8/libraries/PMMLib.sol";
+// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract SmartSwap {
     using SafeERC20 for IERC20;
@@ -414,7 +415,7 @@ contract SmartSwap {
     }
 
     constructor(address _dexRouter, address _tokenApprove) {
-        dexRouter = DexRouter(_dexRouter);
+        dexRouter = DexRouter(payable(_dexRouter));
         tokenApprove = _tokenApprove;
     }
 
