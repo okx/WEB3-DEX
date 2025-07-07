@@ -8,15 +8,6 @@ These guides will help you implement **production-ready** token swapping functio
 
 **🔧 What's Different**: Unlike simplified tutorial examples, these guides show you the complete implementation including commission handling, proper parameter encoding, adapter configuration, and production-grade error handling.
 
-### Guide Principles
-Following Uniswap's documentation standards, each guide:
-- Demonstrates a **single concept** with reusable code
-- Has **three parts**: Introduction → Step-by-step walkthrough → Testable output
-- References external code via links rather than copying source snippets
-- Keeps all links and references **at the bottom** to minimize distractions
-- Provides **10-minute implementation** with transition to next steps
-- Uses **minimal dependencies** with all parameters included in code
-
 ## Prerequisites
 
 - Basic understanding of Solidity and smart contracts
