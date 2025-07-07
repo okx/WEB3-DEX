@@ -8,7 +8,7 @@ This repository contains the core smart contracts for the OKX Labs Dex Router. T
 
 This repository is subject to the OKX bug bounty program. Learn more and get started at [HackerOne](https://hackerone.com/okg/policy_scopes?type=team).
 
-## Local deployment
+## Local Development
 
 In order to deploy this code to a local testnet, you should install the dependencies and compile the contracts:
 
