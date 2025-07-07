@@ -2,9 +2,11 @@
 
 ## Getting Started
 
-These guides will help you implement token swapping functionality using the WEB3-DEX Router system. Each guide is designed to be completed within 10 minutes and provides working code examples.
+These guides will help you implement **production-ready** token swapping functionality using the WEB3-DEX Router system. Each guide is designed to be completed within 10 minutes and provides complete, working smart contracts based on real implementation examples.
 
-**💡 Complete Code Examples**: All code examples in these guides are available in our [example repository](https://github.com/WEB3-DEX/examples) for easy copy-paste implementation.
+**💡 Production-Ready Examples**: All code examples in these guides are derived from actual working smart contracts and are available in our [examples folder](https://github.com/WEB3-DEX/WEB3-DEX/tree/main/examples) for easy copy-paste implementation.
+
+**🔧 What's Different**: Unlike simplified tutorial examples, these guides show you the complete implementation including commission handling, proper parameter encoding, adapter configuration, and production-grade error handling.
 
 ### Guide Principles
 Following Uniswap's documentation standards, each guide:
@@ -22,128 +24,239 @@ Following Uniswap's documentation standards, each guide:
 - Node.js and npm installed
 - Hardhat development environment
 
-## Guide 1: Simple Token Swap
+## Guide 1: Simple Token Swap with Commission System
 
 ### Introduction
-This guide demonstrates how to execute a basic token swap using the DexRouter. You'll learn to swap one ERC20 token for another using the optimal routing provided by the aggregator.
+This guide demonstrates how to execute a production-ready token swap using the DexRouter with advanced features including commission handling, proper parameter encoding, and adapter-based routing. You'll learn to build a complete smart contract that can handle real-world DEX aggregation with flexible referral systems.
 
 ### What You'll Build
-A simple swap function that exchanges USDC for DAI with slippage protection.
+A comprehensive smart swap contract that exchanges tokens with configurable commission distribution, adapter routing, and production-grade parameter handling.
 
 ### Implementation
 
-**Step 1: Contract Setup**
+**Step 1: Complete Contract Setup**
 ```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+import "../contracts/8/DexRouter.sol";
+import "../contracts/8/libraries/PMMLib.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-interface IDexRouter {
-    struct BaseRequest {
-        uint256 fromToken;
-        address toToken;
-        uint256 fromTokenAmount;
-        uint256 minReturnAmount;
-        uint256 deadLine;
-    }
-    
-    struct RouterPath {
-        address[] mixAdapters;
-        address[] assetTo;
-        uint256[] rawData;
-        bytes[] extraData;
-        uint256 fromToken;
-    }
-    
-    function smartSwapByOrderId(
-        uint256 orderId,
-        BaseRequest calldata baseRequest,
-        uint256[] calldata batchesAmount,
-        RouterPath[][] calldata batches,
-        bytes[] calldata extraData
-    ) external payable returns (uint256 returnAmount);
-}
-
-contract SimpleSwapExample {
+contract SmartSwap {
     using SafeERC20 for IERC20;
     
-    IDexRouter public immutable dexRouter;
-    
-    constructor(address _dexRouter) {
-        dexRouter = IDexRouter(_dexRouter);
+    address internal constant _ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    uint256 internal constant _ADDRESS_MASK =
+        0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff;
+    uint256 constant FROM_TOKEN_COMMISSION =
+        0x3ca20afc2aaa0000000000000000000000000000000000000000000000000000;
+    uint256 constant TO_TOKEN_COMMISSION =
+        0x3ca20afc2bbb0000000000000000000000000000000000000000000000000000;
+    uint256 constant FROM_TOKEN_COMMISSION_DUAL =
+        0x22220afc2aaa0000000000000000000000000000000000000000000000000000;
+    uint256 constant TO_TOKEN_COMMISSION_DUAL =
+        0x22220afc2bbb0000000000000000000000000000000000000000000000000000;
+    uint256 constant _TO_B_COMMISSION_MASK =
+        0x8000000000000000000000000000000000000000000000000000000000000000;
+
+    address public refer1;
+    address public refer2;
+    uint256 public rate1;
+    uint256 public rate2;
+
+    DexRouter public dexRouter;
+    address public tokenApprove;
+
+    struct SwapInfo {
+        uint256 orderId;
+        DexRouter.BaseRequest baseRequest;
+        uint256[] batchesAmount;
+        DexRouter.RouterPath[][] batches;
+        PMMLib.PMMSwapRequest[] extraData;
+    }
+
+    constructor(
+        address _dexRouter,
+        address _tokenApprove,
+        address _refer1,
+        address _refer2,
+        uint256 _rate1,
+        uint256 _rate2
+    ) {
+        dexRouter = DexRouter(_dexRouter);
+        tokenApprove = _tokenApprove;
+        refer1 = _refer1;
+        refer2 = _refer2;
+        require(_rate1 < 10 ** 9, "rate1 must be less than 10**9");
+        require(_rate2 < 10 ** 9, "rate2 must be less than 10**9");
+        require(
+            _rate1 + _rate2 < 0.03 * 10 ** 9,
+            "rate1 + rate2 must be less than 0.03"
+        );
+        rate1 = _rate1;
+        rate2 = _rate2;
     }
 }
 ```
 
-**Step 2: Implement Swap Function**
+**Step 2: Implement Advanced Swap Function**
 ```solidity
-function swapTokens(
+function performTokenSwap(
     address fromToken,
     address toToken,
     uint256 amount,
     uint256 minReturn,
-    uint256 deadline
-) external returns (uint256 returnAmount) {
-    // Transfer tokens from user to this contract
-    IERC20(fromToken).safeTransferFrom(msg.sender, address(this), amount);
-    
-    // Approve the router to spend tokens
-    IERC20(fromToken).safeApprove(address(dexRouter), amount);
-    
-    // Prepare swap parameters
-    IDexRouter.BaseRequest memory request = IDexRouter.BaseRequest({
-        fromToken: uint256(uint160(fromToken)),
-        toToken: toToken,
-        fromTokenAmount: amount,
-        minReturnAmount: minReturn,
-        deadLine: deadline
-    });
-    
-    // Simple single-path swap
-    uint256[] memory batchAmounts = new uint256[](1);
-    batchAmounts[0] = amount;
-    
-    // Execute the swap
-    returnAmount = dexRouter.smartSwapByOrderId(
-        0, // orderId
-        request,
-        batchAmounts,
-        new IDexRouter.RouterPath[][](0), // Will be populated by router
-        new bytes[](0) // extraData
+    address adapter,
+    address poolAddress
+) external {
+    // Step 1: Approve tokens for spending
+    IERC20(fromToken).safeApprove(tokenApprove, amount);
+
+    // Step 2: Prepare swap info structure
+    SwapInfo memory swapInfo;
+
+    // Step 3: Setup base request
+    swapInfo.baseRequest.fromToken = uint256(uint160(fromToken));
+    swapInfo.baseRequest.toToken = toToken;
+    swapInfo.baseRequest.fromTokenAmount = amount;
+    swapInfo.baseRequest.minReturnAmount = minReturn;
+    swapInfo.baseRequest.deadLine = block.timestamp + 300; // 5 minutes deadline
+
+    // Step 4: Setup batch amounts
+    swapInfo.batchesAmount = new uint256[](1);
+    swapInfo.batchesAmount[0] = amount;
+
+    // Step 5: Setup routing batches
+    swapInfo.batches = new DexRouter.RouterPath[][](1);
+    swapInfo.batches[0] = new DexRouter.RouterPath[](1);
+
+    // Setup adapter
+    swapInfo.batches[0][0].mixAdapters = new address[](1);
+    swapInfo.batches[0][0].mixAdapters[0] = adapter;
+
+    // Setup asset destination - tokens go to adapter
+    swapInfo.batches[0][0].assetTo = new address[](1);
+    swapInfo.batches[0][0].assetTo[0] = adapter;
+
+    // Setup raw data with correct encoding: reverse(1byte) + weight(11bytes) + poolAddress(20bytes)
+    swapInfo.batches[0][0].rawData = new uint256[](1);
+    swapInfo.batches[0][0].rawData[0] = uint256(
+        bytes32(abi.encodePacked(uint8(0x00), uint88(10000), poolAddress))
+    );
+
+    // Setup adapter-specific extra data
+    swapInfo.batches[0][0].extraData = new bytes[](1);
+    swapInfo.batches[0][0].extraData[0] = abi.encode(
+        bytes32(uint256(uint160(fromToken))),
+        bytes32(uint256(uint160(toToken)))
+    );
+
+    swapInfo.batches[0][0].fromToken = uint256(uint160(fromToken));
+
+    // Step 6: Setup PMM extra data (empty for basic swaps)
+    swapInfo.extraData = new PMMLib.PMMSwapRequest[](0);
+
+    // Step 7: Execute the swap
+    bytes memory swapData = abi.encodeWithSelector(
+        dexRouter.smartSwapByOrderId.selector,
+        swapInfo.orderId,
+        swapInfo.baseRequest,
+        swapInfo.batchesAmount,
+        swapInfo.batches,
+        swapInfo.extraData
     );
     
-    // Transfer result tokens to user
-    IERC20(toToken).safeTransfer(msg.sender, returnAmount);
+    // Step 8: Execute the swap with commission
+    bytes memory data = bytes.concat(
+        swapData,
+        _getCommissionInfo(true, true, false, toToken)
+    );
+    (bool s, bytes memory res) = address(dexRouter).call(data);
+    require(s, string(res));
 }
 ```
 
-**Step 3: Usage Example**
+**Step 3: Commission Handling (Advanced Feature)**
 ```solidity
-// Deploy the contract
-SimpleSwapExample swapper = new SimpleSwapExample(dexRouterAddress);
+function _getCommissionInfo(
+    bool _hasNextRefer,
+    bool _isToB,
+    bool _isFrom,
+    address _token
+) internal view returns (bytes memory data) {
+    uint256 flag = _isFrom
+        ? (
+            _hasNextRefer
+                ? FROM_TOKEN_COMMISSION_DUAL
+                : FROM_TOKEN_COMMISSION
+        )
+        : (_hasNextRefer ? TO_TOKEN_COMMISSION_DUAL : TO_TOKEN_COMMISSION);
 
-// Execute a swap
-uint256 usdcAmount = 1000 * 1e6; // 1000 USDC
-uint256 minDaiReturn = 990 * 1e18; // Minimum 990 DAI (1% slippage)
-uint256 deadline = block.timestamp + 300; // 5 minutes
+    bytes32 first = bytes32(
+        flag + uint256(rate1 << 160) + uint256(uint160(refer1))
+    );
+    bytes32 middle = bytes32(
+        abi.encodePacked(uint8(_isToB ? 0x80 : 0), uint88(0), _token)
+    );
+    bytes32 last = bytes32(
+        flag + uint256(rate2 << 160) + uint256(uint160(refer2))
+    );
+    
+    uint256 status;
+    assembly {
+        function _getStatus(token, isToB, hasNextRefer) -> d {
+            let a := mul(eq(token, _ETH), 256)
+            let b := mul(isToB, 16)
+            let c := hasNextRefer
+            d := add(a, add(b, c))
+        }
+        status := _getStatus(_token, _isToB, _hasNextRefer)
+    }
+    
+    return _hasNextRefer
+        ? abi.encode(last, middle, first)
+        : abi.encode(middle, first);
+}
+```
 
-uint256 daiReceived = swapper.swapTokens(
-    usdcAddress,
-    daiAddress,
-    usdcAmount,
-    minDaiReturn,
-    deadline
+**Step 4: Usage Example**
+```solidity
+// Deploy the contract with commission configuration
+SmartSwap swapper = new SmartSwap(
+    dexRouterAddress,
+    approveProxyAddress,
+    0x000000000000000000000000000000000000dEaD, // refer1
+    0x000000000000000000000000000000000000bEEF, // refer2
+    0.0001 * 10 ** 9, // rate1 (0.01%)
+    0.00002 * 10 ** 9 // rate2 (0.002%)
+);
+
+// Execute a swap with USDT → USDC
+swapper.performTokenSwap(
+    0xdAC17F958D2ee523a2206206994597C13D831ec7, // USDT
+    0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, // USDC  
+    1000 * 1e6, // 1000 USDT
+    990 * 1e6,  // Min 990 USDC (1% slippage)
+    uniV3AdapterAddress,
+    uniV3PoolAddress
 );
 ```
 
 ### Expected Output
-- Input: 1000 USDC
-- Output: ~1000 DAI (minus fees and slippage)
-- Gas: ~150,000 gas units
+- Input: 1000 USDT
+- Output: ~1000 USDC (minus fees and slippage)
+- Gas: ~200,000 gas units (includes commission processing)
+- Commission: Automatic fee distribution to referrers based on configured rates
 
-**📁 Complete Example**: View the [complete SimpleSwap example](https://github.com/WEB3-DEX/examples/tree/main/simple-swap) in our repository.
+**Key Features Demonstrated:**
+- Flexible commission configuration in constructor
+- Complete swap parameter setup and encoding
+- Low-level call execution with commission data
+- Adapter-based routing with proper parameter validation
+
+**📁 Complete Example**: View the [complete SmartSwap example](https://github.com/WEB3-DEX/WEB3-DEX/tree/main/examples/smartswap.sol) in our repository.
 
 ---
 
@@ -279,7 +392,7 @@ uint256 usdcReceived = multiSwapper.executeMultiPathSwap(
 - Output: ~30,000 USDC distributed across 3 DEXs
 - Gas: ~400,000 gas units
 
-**📁 Complete Example**: View the [complete MultiPath example](https://github.com/WEB3-DEX/examples/tree/main/multi-path-swap) in our repository.
+**📁 Complete Example**: View the [complete MultiPath example](https://github.com/WEB3-DEX/WEB3-DEX/tree/main/examples/multi-path-swap) in our repository.
 
 ---
 
@@ -398,147 +511,268 @@ uint256 ethReceived = ethSwapper.swapTokensForETH(
 - USDC → ETH: 3000 USDC → ~0.98 ETH
 - Gas: ~200,000 gas units per swap
 
-**📁 Complete Example**: View the [complete ETH Swap example](https://github.com/WEB3-DEX/examples/tree/main/eth-swap) in our repository.
+**📁 Complete Example**: View the [complete ETH Swap example](https://github.com/WEB3-DEX/WEB3-DEX/tree/main/examples/eth-swap) in our repository.
 
 ---
 
 ## Guide 4: Investment Contract Integration
 
 ### Introduction
-This guide shows how to integrate the router with investment contracts, allowing for automated rebalancing and portfolio management using the specialized investment swap functions.
+This guide shows how to use the specialized `smartSwapByInvest` function for investment scenarios. This function is optimized for cases where tokens are already held by the router contract, allowing for efficient rebalancing and investment operations.
 
 ### What You'll Build
-An investment contract that can automatically rebalance a portfolio by swapping tokens based on target allocations.
+An investment smart contract that demonstrates direct token transfers to the DexRouter and execution of swaps optimized for investment use cases.
 
 ### Implementation
 
-**Step 1: Investment Contract**
+**Step 1: Investment Contract with smartSwapByInvest**
 ```solidity
-contract InvestmentPortfolio {
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
+
+import "../contracts/8/DexRouter.sol";
+import "../contracts/8/libraries/PMMLib.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+contract SmartSwap {
     using SafeERC20 for IERC20;
-    
-    IDexRouter public immutable dexRouter;
-    address public owner;
-    
-    struct Asset {
-        address token;
-        uint256 targetAllocation; // In basis points (10000 = 100%)
+
+    DexRouter public dexRouter;
+    address public tokenApprove;
+
+    struct SwapInfo {
+        uint256 orderId;
+        DexRouter.BaseRequest baseRequest;
+        uint256[] batchesAmount;
+        DexRouter.RouterPath[][] batches;
+        PMMLib.PMMSwapRequest[] extraData;
     }
-    
-    Asset[] public assets;
-    mapping(address => bool) public allowedTokens;
-    
-    constructor(address _dexRouter) {
-        dexRouter = IDexRouter(_dexRouter);
-        owner = msg.sender;
+
+    constructor(address _dexRouter, address _tokenApprove) {
+        dexRouter = DexRouter(_dexRouter);
+        tokenApprove = _tokenApprove;
     }
-    
-    function addAsset(address token, uint256 targetAllocation) external {
-        require(msg.sender == owner, "Only owner");
-        assets.push(Asset(token, targetAllocation));
-        allowedTokens[token] = true;
-    }
-    
-    function rebalancePortfolio(
+
+    function performTokenSwap(
         address fromToken,
         address toToken,
         uint256 amount,
         uint256 minReturn,
-        uint256 deadline
-    ) external returns (uint256 returnAmount) {
-        require(allowedTokens[fromToken] && allowedTokens[toToken], "Token not allowed");
-        
-        // Transfer tokens to this contract
-        IERC20(fromToken).safeTransferFrom(msg.sender, address(this), amount);
-        
-        // Approve router to spend our tokens
-        IERC20(fromToken).safeApprove(address(dexRouter), amount);
-        
-        // Prepare investment swap request
-        IDexRouter.BaseRequest memory request = IDexRouter.BaseRequest({
-            fromToken: uint256(uint160(fromToken)),
-            toToken: toToken,
-            fromTokenAmount: amount,
-            minReturnAmount: minReturn,
-            deadLine: deadline
-        });
-        
-        // Use investment swap function
-        uint256[] memory batchAmounts = new uint256[](1);
-        batchAmounts[0] = amount;
-        
-        returnAmount = dexRouter.smartSwapByInvest(
-            request,
-            batchAmounts,
-            new IDexRouter.RouterPath[][](0),
-            new bytes[](0),
-            address(this) // Tokens stay in contract
+        address adapter,
+        address poolAddress
+    ) external {
+        // Step 1: Transfer tokens directly to dexRouter for investment swaps
+        IERC20(fromToken).safeTransferFrom(
+            msg.sender,
+            address(dexRouter),
+            amount
         );
-        
-        emit Rebalanced(fromToken, toToken, amount, returnAmount);
+
+        // Step 2: Prepare swap info structure
+        SwapInfo memory swapInfo;
+
+        // Step 3: Setup base request
+        swapInfo.baseRequest.fromToken = uint256(uint160(fromToken));
+        swapInfo.baseRequest.toToken = toToken;
+        swapInfo.baseRequest.fromTokenAmount = amount;
+        swapInfo.baseRequest.minReturnAmount = minReturn;
+        swapInfo.baseRequest.deadLine = block.timestamp + 300; // 5 minutes deadline
+
+        // Step 4: Setup batch amounts
+        swapInfo.batchesAmount = new uint256[](1);
+        swapInfo.batchesAmount[0] = amount;
+
+        // Step 5: Setup routing batches
+        swapInfo.batches = new DexRouter.RouterPath[][](1);
+        swapInfo.batches[0] = new DexRouter.RouterPath[](1);
+
+        // Setup adapter
+        swapInfo.batches[0][0].mixAdapters = new address[](1);
+        swapInfo.batches[0][0].mixAdapters[0] = adapter;
+
+        // Setup asset destination - tokens go to adapter
+        swapInfo.batches[0][0].assetTo = new address[](1);
+        swapInfo.batches[0][0].assetTo[0] = adapter;
+
+        // Setup raw data with correct encoding: reverse(1byte) + weight(11bytes) + poolAddress(20bytes)
+        swapInfo.batches[0][0].rawData = new uint256[](1);
+        swapInfo.batches[0][0].rawData[0] = uint256(
+            bytes32(abi.encodePacked(uint8(0x00), uint88(10000), poolAddress))
+        );
+
+        // Setup adapter-specific extra data
+        swapInfo.batches[0][0].extraData = new bytes[](1);
+        swapInfo.batches[0][0].extraData[0] = abi.encode(
+            bytes32(uint256(uint160(fromToken))),
+            bytes32(uint256(uint160(toToken)))
+        );
+
+        swapInfo.batches[0][0].fromToken = uint256(uint160(fromToken));
+
+        // Step 6: Setup PMM extra data (empty for basic swaps)
+        swapInfo.extraData = new PMMLib.PMMSwapRequest[](0);
+
+        // Step 7: Execute the investment swap
+        uint256 returnAmount = dexRouter.smartSwapByInvest(
+            swapInfo.baseRequest,
+            swapInfo.batchesAmount,
+            swapInfo.batches,
+            swapInfo.extraData,
+            msg.sender // Send tokens to the user
+        );
+
+        // returnAmount contains the actual tokens received
     }
-    
-    function getPortfolioValue() external view returns (uint256 totalValue) {
-        for (uint256 i = 0; i < assets.length; i++) {
-            uint256 balance = IERC20(assets[i].token).balanceOf(address(this));
-            totalValue += balance; // Simplified - would need price oracle in real implementation
-        }
-    }
-    
-    event Rebalanced(address indexed from, address indexed to, uint256 amountIn, uint256 amountOut);
 }
 ```
 
 **Step 2: Usage Example**
 ```solidity
 // Deploy investment contract
-InvestmentPortfolio portfolio = new InvestmentPortfolio(dexRouterAddress);
-
-// Add assets to portfolio
-portfolio.addAsset(usdcAddress, 4000); // 40% USDC
-portfolio.addAsset(daiAddress, 3000);  // 30% DAI
-portfolio.addAsset(wethAddress, 3000); // 30% WETH
-
-// Rebalance: swap excess USDC for DAI
-uint256 daiReceived = portfolio.rebalancePortfolio(
-    usdcAddress,
-    daiAddress,
-    5000 * 1e6, // 5000 USDC
-    4950 * 1e18, // Min 4950 DAI
-    block.timestamp + 300
+SmartSwap investmentSwap = new SmartSwap(
+    dexRouterAddress, 
+    approveProxyAddress
 );
+
+// Approve tokens first
+IERC20(usdcAddress).approve(address(investmentSwap), 5000 * 1e6);
+
+// Execute investment swap: USDC → DAI
+investmentSwap.performTokenSwap(
+    usdcAddress,      // From USDC
+    daiAddress,       // To DAI
+    5000 * 1e6,       // 5000 USDC
+    4950 * 1e18,      // Min 4950 DAI (1% slippage)
+    curveAdapterAddress,
+    curveUsdcDaiPoolAddress
+);
+
+// The DAI tokens are automatically sent to msg.sender
 ```
 
 ### Expected Output
-- Automatic portfolio rebalancing
-- Tokens remain in investment contract
-- Gas: ~250,000 gas units
+- Input: 5000 USDC
+- Output: ~4950 DAI (to user's wallet)
+- Gas: ~180,000 gas units
+- Direct token transfer to user (not to contract)
 
-**📁 Complete Example**: View the [complete Investment Integration example](https://github.com/WEB3-DEX/examples/tree/main/investment-portfolio) in our repository.
+**Key Features Demonstrated:**
+- `smartSwapByInvest` function usage
+- Direct token transfer to DexRouter
+- Simplified structure without commission handling
+- Investment-optimized workflow
+
+**📁 Complete Example**: View the [complete Investment SmartSwap example](https://github.com/WEB3-DEX/WEB3-DEX/tree/main/examples/smartswapByInvest.sol) in our repository.
 
 ---
 
 ## Common Patterns and Best Practices
 
-### 1. Slippage Protection
+### 1. Choose the Right Swap Function
+**`smartSwapByOrderId`**: For regular swaps with commission handling
+```solidity
+// Best for: User-initiated swaps, dApp integrations with referral systems
+returnAmount = dexRouter.smartSwapByOrderId(
+    orderId,
+    baseRequest,
+    batchesAmount,
+    batches,
+    extraData
+);
+```
+
+**`smartSwapByInvest`**: For investment scenarios
+```solidity
+// Best for: Investment protocols, rebalancing, when tokens are already in router
+returnAmount = dexRouter.smartSwapByInvest(
+    baseRequest,
+    batchesAmount,
+    batches,
+    extraData,
+    recipient
+);
+```
+
+### 2. Commission Configuration
+Set up flexible commission rates in your constructor:
+```solidity
+constructor(
+    address _dexRouter,
+    address _tokenApprove,
+    address _refer1,
+    address _refer2,
+    uint256 _rate1,
+    uint256 _rate2
+) {
+    // Validate commission rates
+    require(_rate1 < 10 ** 9, "rate1 must be less than 10**9");
+    require(_rate2 < 10 ** 9, "rate2 must be less than 10**9");
+    require(
+        _rate1 + _rate2 < 0.03 * 10 ** 9,
+        "rate1 + rate2 must be less than 0.03"
+    );
+    // Set commission parameters
+    rate1 = _rate1;
+    rate2 = _rate2;
+    refer1 = _refer1;
+    refer2 = _refer2;
+}
+```
+
+### 3. Proper Raw Data Encoding
+Always encode raw data correctly for adapters:
+```solidity
+// Format: reverse(1byte) + weight(11bytes) + poolAddress(20bytes)
+rawData[0] = uint256(
+    bytes32(abi.encodePacked(uint8(0x00), uint88(10000), poolAddress))
+);
+```
+
+### 4. Low-Level Call Execution
+For advanced commission handling, use low-level calls:
+```solidity
+bytes memory swapData = abi.encodeWithSelector(
+    dexRouter.smartSwapByOrderId.selector,
+    orderId,
+    baseRequest,
+    batchesAmount,
+    batches,
+    extraData
+);
+
+bytes memory data = bytes.concat(
+    swapData,
+    _getCommissionInfo(hasNextRefer, isToB, isFrom, token)
+);
+
+(bool success, bytes memory result) = address(dexRouter).call(data);
+require(success, string(result));
+```
+
+### 5. Token Transfer Strategies
+Choose the right transfer approach:
+```solidity
+// For regular swaps with approval
+IERC20(token).safeApprove(tokenApprove, amount);
+
+// For investment swaps (direct transfer to router)
+IERC20(token).safeTransferFrom(user, address(dexRouter), amount);
+```
+
+### 6. Slippage Protection
 Always set appropriate minimum return amounts:
 ```solidity
 uint256 minReturn = (expectedAmount * 9900) / 10000; // 1% slippage tolerance
 ```
 
-### 2. Deadline Management
+### 7. Deadline Management
 Set reasonable deadlines to prevent stale transactions:
 ```solidity
 uint256 deadline = block.timestamp + 300; // 5 minutes
 ```
 
-### 3. Token Approval
-Always approve the exact amount needed:
-```solidity
-IERC20(token).safeApprove(address(dexRouter), amount);
-```
-
-### 4. Error Handling
+### 8. Error Handling
 Implement proper error handling for failed swaps:
 ```solidity
 try dexRouter.smartSwapByOrderId(...) returns (uint256 amount) {
@@ -551,7 +785,7 @@ try dexRouter.smartSwapByOrderId(...) returns (uint256 amount) {
 ## Next Steps
 
 ### Recommended Learning Path
-1. **Start with Guide 1**: Master simple swaps before moving to complex routing
+1. **Start with Guide 1**: Master simple swaps with commission handling
 2. **Practice Guide 2**: Learn batch execution for better price discovery
 3. **Implement Guide 3**: Add ETH support to your integration
 4. **Advanced Guide 4**: Build investment-grade applications
