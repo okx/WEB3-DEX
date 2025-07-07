@@ -1,0 +1,239 @@
+# {{name}}
+
+{{#if notice}}
+{{notice}}
+{{/if}}
+
+{{#if devdoc}}
+{{devdoc}}
+{{/if}}
+
+## Overview
+
+{{#if version}}
+**Version**: {{version}}
+{{/if}}
+
+{{#if license}}
+**License**: {{license}}
+{{/if}}
+
+{{#if inheritance}}
+**Inherits**: {{#each inheritance}}{{#if @index}}, {{/if}}{{.}}{{/each}}
+{{/if}}
+
+## Functions
+
+{{#each functions}}
+### {{name}}
+
+```solidity
+{{signature}}
+```
+
+{{#if notice}}
+{{notice}}
+{{/if}}
+
+{{#if devdoc}}
+{{devdoc}}
+{{/if}}
+
+{{#if params}}
+**Parameters:**
+{{#each params}}
+- `{{name}}` ({{type}}): {{description}}
+{{/each}}
+{{/if}}
+
+{{#if returns}}
+**Returns:**
+{{#each returns}}
+- `{{name}}` ({{type}}): {{description}}
+{{/each}}
+{{/if}}
+
+{{#if modifiers}}
+**Modifiers:**
+{{#each modifiers}}
+- `{{name}}`{{#if params}}({{#each params}}{{#if @index}}, {{/if}}{{.}}{{/each}}){{/if}}
+{{/each}}
+{{/if}}
+
+{{#if events}}
+**Events:**
+{{#each events}}
+- `{{name}}`{{#if params}}({{#each params}}{{#if @index}}, {{/if}}{{type}} {{name}}{{/each}}){{/if}}
+{{/each}}
+{{/if}}
+
+---
+
+{{/each}}
+
+## Events
+
+{{#each events}}
+### {{name}}
+
+```solidity
+event {{name}}({{#each params}}{{#if @index}}, {{/if}}{{type}} {{#if indexed}}indexed {{/if}}{{name}}{{/each}});
+```
+
+{{#if notice}}
+{{notice}}
+{{/if}}
+
+{{#if devdoc}}
+{{devdoc}}
+{{/if}}
+
+{{#if params}}
+**Parameters:**
+{{#each params}}
+- `{{name}}` ({{type}}{{#if indexed}}, indexed{{/if}}): {{description}}
+{{/each}}
+{{/if}}
+
+---
+
+{{/each}}
+
+## Errors
+
+{{#each errors}}
+### {{name}}
+
+```solidity
+error {{name}}({{#each params}}{{#if @index}}, {{/if}}{{type}} {{name}}{{/each}});
+```
+
+{{#if notice}}
+{{notice}}
+{{/if}}
+
+{{#if devdoc}}
+{{devdoc}}
+{{/if}}
+
+{{#if params}}
+**Parameters:**
+{{#each params}}
+- `{{name}}` ({{type}}): {{description}}
+{{/each}}
+{{/if}}
+
+---
+
+{{/each}}
+
+## Structs
+
+{{#each structs}}
+### {{name}}
+
+```solidity
+struct {{name}} {
+{{#each members}}
+{{type}} {{name}};{{#if notice}} // {{notice}}{{/if}}
+{{/each}}
+}
+```
+
+{{#if notice}}
+{{notice}}
+{{/if}}
+
+{{#if devdoc}}
+{{devdoc}}
+{{/if}}
+
+{{#if members}}
+**Members:**
+{{#each members}}
+- `{{name}}` ({{type}}): {{#if notice}}{{notice}}{{else}}{{name}} field{{/if}}
+{{/each}}
+{{/if}}
+
+---
+
+{{/each}}
+
+## Constants
+
+{{#each constants}}
+### {{name}}
+
+```solidity
+{{type}} {{visibility}} constant {{name}} = {{value}};
+```
+
+{{#if notice}}
+{{notice}}
+{{/if}}
+
+{{#if devdoc}}
+{{devdoc}}
+{{/if}}
+
+---
+
+{{/each}}
+
+## Usage Examples
+
+### Basic Integration
+
+```solidity
+// Import the contract interface
+import "./interfaces/I{{name}}.sol";
+
+contract YourContract {
+I{{name}} public immutable {{toLowerCase name}};
+
+constructor(address _{{toLowerCase name}}) {
+{{toLowerCase name}} = I{{name}}(_{{toLowerCase name}});
+}
+
+function example() external {
+// Your implementation here
+}
+}
+```
+
+### Advanced Integration
+
+```solidity
+// Example of advanced usage patterns
+contract Advanced{{name}}Integration {
+I{{name}} public immutable {{toLowerCase name}};
+
+constructor(address _{{toLowerCase name}}) {
+{{toLowerCase name}} = I{{name}}(_{{toLowerCase name}});
+}
+
+// Add your advanced integration examples here
+}
+```
+
+## Security Considerations
+
+{{#if security}}
+{{security}}
+{{else}}
+- Always validate input parameters
+- Implement proper access controls
+- Consider reentrancy protection where applicable
+- Test thoroughly before deployment
+{{/if}}
+
+## Related Documentation
+
+- [Overview](../overview.md)
+- [Implementation Guides](../guides/)
+- [Integration Examples](https://github.com/WEB3-DEX/examples)
+
+---
+
+*This documentation is auto-generated from contract NatSpec comments. For the most up-to-date information, refer to the
+source contract.*
