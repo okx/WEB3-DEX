@@ -256,12 +256,14 @@ contract UnxswapV3Router is IUniswapV3SwapCallback, CommonUtils {
                 mstore(0, srcToken)
                 mstore(32, toToken)
                 mstore(64, origin())
-                // mstore(96, _initAmount) //avoid stack too deep, since i mstore the initAmount to 96, so no need to re-mstore it
-                mstore(128, _returnAmount)
+                mstore(96, receiver)
+                // mstore(128, _initAmount) //avoid stack too deep, since i mstore the initAmount to 128, so no need to re-mstore it
+                mstore(160, _returnAmount)
                 log1(
                     0,
-                    160,
-                    0x1bb43f2da90e35f7b0cf38521ca95a49e68eb42fac49924930a5bd73cdf7576c
+                    192,
+                    0xfe793b6df82276a4e48bce23dda9cca20cac1aec78da1e85ebcdacf7b5db347a
+                    // keccak256("OrderRecord(address,address,address,address,uint256,uint256)")
                 )
                 mstore(0x40, freePtr)
             }
@@ -290,7 +292,7 @@ contract UnxswapV3Router is IUniswapV3SwapCallback, CommonUtils {
                 }
             }
 
-            mstore(96, amount) // 96 is not override by _makeSwap, since it only use freePtr memory, and it is not override by unWrapWeth ethier
+            mstore(128, amount) // 128 is not override by _makeSwap, since it only use freePtr memory, and it is not override by unWrapWeth ethier
             for {
                 let i := firstPoolStart
             } lt(i, lastPoolStart) {
